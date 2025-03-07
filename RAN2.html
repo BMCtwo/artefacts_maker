@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Prueba de Matrices 9x4 (Formato Apaisado y Centrado)</title>
+  <style>
+    /* Estilos generales para centrar el contenido */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f5f5f5;
+    }
+    .screen {
+      width: 90%;
+      max-width: 900px;
+      text-align: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .screen:not(.active) {
+      display: none;
+    }
+    .active {
+      display: block;
+    }
+    /* Estilos para la matriz */
+    table {
+      border-collapse: collapse;
+      margin: auto;
+      border: none;
+    }
+    td {
+      padding: 0;
+      border: none;
+    }
+    /* Cuadrados de colores (se mantienen igual) */
+    .colorSquare {
+      width: 80px;
+      height: 80px;
+      display: inline-block;
+      margin: 10px;
+      border: 1px solid black; /* para ver el blanco */
+    }
+    /* Objetos: margen incrementado para separarlos más */
+    .objectImage {
+      width: 80px;
+      height: 80px;
+      display: inline-block;
+      margin: 20px;
+    }
+    /* Clase para letras y números, con mayor separación y tamaño */
+    .textStimulus {
+      display: inline-block;
+      margin: 20px;
+      font-size: 2em;
+    }
+    /* Contenedor para la prueba: matriz y controles */
+    .pruebaContainer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 20px 0;
+    }
+    #matrizContainer {
+      margin-right: 20px;
+    }
+    /* Controles a la derecha: botones más pequeños */
+    #controles {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    #controles button {
+      font-size: 0.8em;
+      padding: 5px 10px;
+      margin-bottom: 10px;
+    }
+    /* Botón "Siguiente prueba" centrado debajo */
+    #continuarPrueba {
+      font-size: 1em;
+      padding: 8px 16px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Pantalla de Registro -->
+  <div id="registro" class="screen active">
+    <h2>Registro del Sujeto</h2>
+    <form id="registroForm">
+      <label>ID del sujeto: <input type="text" id="sujetoID" required></label><br><br>
+      <label>Clase y letra: <input type="text" id="claseLetra" required></label><br><br>
+      <label>Edad: <input type="number" id="edad" required></label><br><br>
+      <label>Género:
+        <select id="genero" required>
+          <option value="">Seleccione</option>
+          <option value="niño">Niño</option>
+          <option value="niña">Niña</option>
+        </select>
+      </label><br><br>
+      <button type="submit">Iniciar Prueba</button>
+    </form>
+  </div>
+
+  <!-- Pantalla de Ejemplo -->
+  <div id="ejemplo" class="screen">
+    <h2 id="tituloEjemplo"></h2>
+    <p>Ejemplo:</p>
+    <div id="ejemploContenido" style="margin-bottom: 20px;"></div>
+    <button id="continuarEjemplo">Continuar</button>
+  </div>
+
+  <!-- Pantalla de Prueba (Matriz) -->
+  <div id="prueba" class="screen">
+    <!-- Se ha quitado el título de la prueba (ya no se muestra encima de la matriz) -->
+    <div class="pruebaContainer">
+      <div id="matrizContainer"></div>
+      <div id="controles">
+        <button id="btnIniciar">Iniciar</button>
+        <button id="btnTerminar" disabled>Terminar</button>
+        <button id="btnReiniciar">Reiniciar</button>
+      </div>
+    </div>
+    <div id="tiempoResultado" style="font-weight: bold;"></div>
+    <button id="continuarPrueba" style="display:none;">Siguiente prueba</button>
+  </div>
+
+  <!-- Pantalla de Resumen -->
+  <div id="resumen" class="screen">
+    <h2>Resumen de Tiempos</h2>
+    <div id="resumenDatos"></div>
+  </div>
+
+  <script>
+    // Variable para almacenar los datos del sujeto
+    let subjectData = {};
+
+    // Mapeo de colores: de nombre en español a valor CSS
+    const colorMapping = {
+      "negro": "black",
+      "verde": "green",
+      "azul": "blue",
+      "rojo": "red",
+      "blanco": "white",
+      "amarillo": "yellow"
+    };
+
+    // Mapeo de objetos: se asume que las imágenes están en la misma carpeta y tienen extensión .webp
+    const objetosMapping = {
+      "coche": "imagenes/coche.webp",
+      "estrella": "imagenes/estrella.webp",
+      "lápiz": "imagenes/lapiz.webp",
+      "silla": "imagenes/silla.webp",
+      "paraguas": "imagenes/paraguas.webp",
+      "llave": "imagenes/llave.webp"
+    };
+
+    // Datos de cada prueba
+    const pruebas = [
+      { tipo: "Colores", elementos: ["negro", "verde", "azul", "rojo", "blanco", "amarillo"] },
+      { tipo: "Objetos", elementos: ["coche", "estrella", "lápiz", "silla", "paraguas", "llave"] },
+      { tipo: "Letras", elementos: ["D", "S", "A", "P", "O", "L"] },
+      { tipo: "Números", elementos: ["1", "2", "3", "7", "9", "6"] }
+    ];
+
+    let currentTestIndex = 0;
+    let startTime = null;
+    let currentMatrixDistribution = [];
+    const resultados = []; // Se guardarán objetos {tipo, tiempo}
+    const numColumnas = 9; // 9 columnas para el formato apaisado (4 filas)
+
+    // Función para cambiar de pantalla
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    // Manejo del formulario de registro
+    document.getElementById("registroForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      subjectData = {
+        id: document.getElementById("sujetoID").value,
+        claseLetra: document.getElementById("claseLetra").value,
+        edad: document.getElementById("edad").value,
+        genero: document.getElementById("genero").value
+      };
+      showEjemplo();
+    });
+
+    // Mostrar la pantalla de ejemplo de la prueba actual
+    function showEjemplo() {
+      if (currentTestIndex >= pruebas.length) {
+        showResumen();
+        return;
+      }
+      const pruebaActual = pruebas[currentTestIndex];
+      document.getElementById("tituloEjemplo").textContent = "Ejemplo: " + pruebaActual.tipo;
+      renderExampleContent(pruebaActual);
+      showScreen("ejemplo");
+    }
+
+    // Renderiza el contenido del ejemplo según el tipo de prueba
+    function renderExampleContent(pruebaActual) {
+      const contenedor = document.getElementById("ejemploContenido");
+      contenedor.innerHTML = "";
+      if (pruebaActual.tipo === "Colores") {
+        pruebaActual.elementos.forEach(color => {
+          const divColor = document.createElement("div");
+          divColor.className = "colorSquare";
+          divColor.style.backgroundColor = colorMapping[color] || color;
+          contenedor.appendChild(divColor);
+        });
+      } else if (pruebaActual.tipo === "Objetos") {
+        pruebaActual.elementos.forEach(obj => {
+          const img = document.createElement("img");
+          img.className = "objectImage";
+          img.src = objetosMapping[obj] || obj;
+          img.alt = obj;
+          contenedor.appendChild(img);
+        });
+      } else {
+        contenedor.textContent = pruebaActual.elementos.join(" - ");
+      }
+    }
+
+    // Al presionar "Continuar" en la pantalla de ejemplo, mostrar la matriz de prueba
+    document.getElementById("continuarEjemplo").addEventListener("click", function() {
+      showPrueba();
+    });
+
+    // Genera una matriz aleatoria de 36 celdas con 6 apariciones de cada elemento,
+    // asegurando que en la lectura de izquierda a derecha (dentro de cada fila)
+    // no aparezcan dos estímulos iguales consecutivos.
+    function generarMatriz(elementos) {
+      const totalCeldas = 36;
+      let array = [];
+      elementos.forEach(el => {
+        for (let i = 0; i < totalCeldas / elementos.length; i++) {
+          array.push(el);
+        }
+      });
+      let attempts = 0;
+      let valid = false;
+      while (!valid && attempts < 1000) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+        valid = true;
+        for (let i = 0; i < array.length - 1; i++) {
+          if ((i + 1) % numColumnas !== 0 && array[i] === array[i + 1]) {
+            valid = false;
+            break;
+          }
+        }
+        attempts++;
+      }
+      return array;
+    }
+
+    // Muestra la pantalla de prueba (matriz) para la prueba actual
+    function showPrueba() {
+      const pruebaActual = pruebas[currentTestIndex];
+      // Se ha quitado el título de la prueba para que la matriz aparezca sin encabezado
+      // document.getElementById("tituloPrueba").textContent = "Prueba: " + pruebaActual.tipo;
+      currentMatrixDistribution = generarMatriz(pruebaActual.elementos);
+      renderMatriz(currentMatrixDistribution, pruebaActual);
+      document.getElementById("btnTerminar").disabled = true;
+      document.getElementById("btnIniciar").disabled = false;
+      document.getElementById("tiempoResultado").textContent = "";
+      document.getElementById("continuarPrueba").style.display = "none";
+      startTime = null;
+      showScreen("prueba");
+    }
+
+    // Renderiza la matriz en formato apaisado (4 filas x 9 columnas)
+    function renderMatriz(distribucion, pruebaActual) {
+      const container = document.getElementById("matrizContainer");
+      container.innerHTML = "";
+      const table = document.createElement("table");
+      let index = 0;
+      for (let i = 0; i < 4; i++) { // 4 filas
+        const row = document.createElement("tr");
+        for (let j = 0; j < numColumnas; j++) { // 9 columnas
+          const cell = document.createElement("td");
+          cell.style.width = "80px";
+          cell.style.height = "80px";
+          const content = renderCellContent(distribucion[index], pruebaActual.tipo);
+          cell.appendChild(content);
+          index++;
+          row.appendChild(cell);
+        }
+        table.appendChild(row);
+      }
+      container.appendChild(table);
+    }
+
+    // Crea el contenido de cada celda según el tipo de prueba
+    function renderCellContent(element, tipo) {
+      if (tipo === "Colores") {
+        const divColor = document.createElement("div");
+        divColor.className = "colorSquare";
+        divColor.style.backgroundColor = colorMapping[element] || element;
+        return divColor;
+      } else if (tipo === "Objetos") {
+        const img = document.createElement("img");
+        img.className = "objectImage";
+        img.src = objetosMapping[element] || element;
+        img.alt = element;
+        return img;
+      } else {
+        const span = document.createElement("span");
+        span.className = "textStimulus";
+        span.textContent = element;
+        return span;
+      }
+    }
+
+    // Botón Iniciar: comienza la cuenta del tiempo
+    document.getElementById("btnIniciar").addEventListener("click", function() {
+      startTime = new Date();
+      document.getElementById("btnIniciar").disabled = true;
+      document.getElementById("btnTerminar").disabled = false;
+    });
+
+    // Botón Terminar: finaliza la cuenta y muestra el tiempo transcurrido
+    document.getElementById("btnTerminar").addEventListener("click", function() {
+      if (!startTime) return;
+      const endTime = new Date();
+      const elapsed = (endTime - startTime) / 1000;
+      document.getElementById("tiempoResultado").textContent = "Tiempo: " + elapsed.toFixed(2) + " segundos";
+      resultados.push({ tipo: pruebas[currentTestIndex].tipo, tiempo: elapsed.toFixed(2) });
+      document.getElementById("btnTerminar").disabled = true;
+      document.getElementById("btnIniciar").disabled = true;
+      document.getElementById("continuarPrueba").style.display = "inline-block";
+    });
+
+    // Botón Reiniciar: genera una nueva distribución y reinicia la cuenta
+    document.getElementById("btnReiniciar").addEventListener("click", function() {
+      showPrueba();
+    });
+
+    // Botón para pasar a la siguiente prueba
+    document.getElementById("continuarPrueba").addEventListener("click", function() {
+      currentTestIndex++;
+      if (currentTestIndex < pruebas.length) {
+        showEjemplo();
+      } else {
+        showResumen();
+      }
+    });
+
+    // Muestra la pantalla de resumen final con los datos del sujeto, tiempos y mención de autoría
+    function showResumen() {
+      const resumenDiv = document.getElementById("resumenDatos");
+      let html = "<h3>Datos del Sujeto</h3>";
+      html += "<p>ID: " + subjectData.id + "<br>";
+      html += "Clase y letra: " + subjectData.claseLetra + "<br>";
+      html += "Edad: " + subjectData.edad + "<br>";
+      html += "Género: " + subjectData.genero + "</p>";
+      html += "<h3>Resumen de Tiempos</h3><ul>";
+      resultados.forEach(result => {
+        html += "<li>" + result.tipo + ": " + result.tiempo + " segundos</li>";
+      });
+      html += "</ul>";
+      html += "<p> Beatriz Martín del Campo. Inspirando Maestros.</p>";
+      resumenDiv.innerHTML = html;
+      showScreen("resumen");
+    }
+  </script>
+</body>
+</html>
