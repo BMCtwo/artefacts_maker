@@ -1,16 +1,18 @@
-const form = document.getElementById('transcriptForm');
-const tableBody = document.getElementById('transcriptTable');
-const fileImport = document.getElementById('fileImport');
-const analyzeBtn = document.getElementById('analyzeBtn');
-const statusEl = document.getElementById('analysisStatus');
-const exportBtn = document.getElementById('exportReport');
+const isBrowser = typeof document !== 'undefined';
+
+const form = isBrowser ? document.getElementById('transcriptForm') : null;
+const tableBody = isBrowser ? document.getElementById('transcriptTable') : null;
+const fileImport = isBrowser ? document.getElementById('fileImport') : null;
+const analyzeBtn = isBrowser ? document.getElementById('analyzeBtn') : null;
+const statusEl = isBrowser ? document.getElementById('analysisStatus') : null;
+const exportBtn = isBrowser ? document.getElementById('exportReport') : null;
 
 const resultIds = ['summary', 'themes', 'sentiment', 'opportunities', 'quotes'];
 const goalCheckboxes = {
-  summary: document.getElementById('goalSummary'),
-  themes: document.getElementById('goalThemes'),
-  sentiment: document.getElementById('goalSentiment'),
-  opportunities: document.getElementById('goalOpportunities')
+  summary: isBrowser ? document.getElementById('goalSummary') : { checked: true },
+  themes: isBrowser ? document.getElementById('goalThemes') : { checked: true },
+  sentiment: isBrowser ? document.getElementById('goalSentiment') : { checked: true },
+  opportunities: isBrowser ? document.getElementById('goalOpportunities') : { checked: true }
 };
 
 const demoTranscripts = [
@@ -35,72 +37,77 @@ const state = {
   analysis: null
 };
 
-form.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const id = form.inputId.value.trim();
-  const participant = form.inputParticipant.value.trim();
-  const transcript = form.inputTranscript.value.trim();
+if (form) {
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const id = form.inputId.value.trim();
+    const participant = form.inputParticipant.value.trim();
+    const transcript = form.inputTranscript.value.trim();
 
-  if (!id || !participant || !transcript) {
-    return;
-  }
+    if (!id || !participant || !transcript) {
+      return;
+    }
 
-  const existingIndex = state.transcripts.findIndex((item) => item.id === id);
-  const entry = {
-    id,
-    participant,
-    transcript,
-    lastUpdated: new Date().toISOString()
-  };
+    const existingIndex = state.transcripts.findIndex((item) => item.id === id);
+    const entry = {
+      id,
+      participant,
+      transcript,
+      lastUpdated: new Date().toISOString()
+    };
 
-  if (existingIndex >= 0) {
-    state.transcripts[existingIndex] = entry;
-  } else {
-    state.transcripts.push(entry);
-  }
+    if (existingIndex >= 0) {
+      state.transcripts[existingIndex] = entry;
+    } else {
+      state.transcripts.push(entry);
+    }
 
-  form.reset();
-  renderTranscripts();
-});
+    form.reset();
+    renderTranscripts();
+  });
+}
 
-fileImport.addEventListener('change', async (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
+if (fileImport) {
+  fileImport.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const text = await file.text();
-  try {
-    if (file.name.endsWith('.json')) {
-      const parsed = JSON.parse(text);
-      const items = Array.isArray(parsed) ? parsed : [parsed];
-      items.forEach((item, index) => {
-        if (!item.transcript && !item.text) return;
-        const id = item.id || `${file.name}-${index + 1}`;
-        const participant = item.participant || item.speaker || 'Participante sin nombre';
+    const text = await file.text();
+    try {
+      if (file.name.endsWith('.json')) {
+        const parsed = JSON.parse(text);
+        const items = Array.isArray(parsed) ? parsed : [parsed];
+        items.forEach((item, index) => {
+          if (!item.transcript && !item.text) return;
+          const id = item.id || `${file.name}-${index + 1}`;
+          const participant = item.participant || item.speaker || 'Participante sin nombre';
+          state.transcripts.push({
+            id,
+            participant,
+            transcript: item.transcript || item.text,
+            lastUpdated: new Date().toISOString()
+          });
+        });
+      } else {
         state.transcripts.push({
-          id,
-          participant,
-          transcript: item.transcript || item.text,
+          id: file.name.replace(/\.[^.]+$/, ''),
+          participant: 'Participante sin nombre',
+          transcript: text,
           lastUpdated: new Date().toISOString()
         });
-      });
-    } else {
-      state.transcripts.push({
-        id: file.name.replace(/\.[^.]+$/, ''),
-        participant: 'Participante sin nombre',
-        transcript: text,
-        lastUpdated: new Date().toISOString()
-      });
+      }
+      renderTranscripts();
+    } catch (error) {
+      console.error('Error importing file:', error);
+      alert('No fue posible importar el archivo. Verifica que tenga formato JSON válido o texto plano.');
+    } finally {
+      fileImport.value = '';
     }
-    renderTranscripts();
-  } catch (error) {
-    console.error('Error importing file:', error);
-    alert('No fue posible importar el archivo. Verifica que tenga formato JSON válido o texto plano.');
-  } finally {
-    fileImport.value = '';
-  }
-});
+  });
+}
 
 function renderTranscripts() {
+  if (!tableBody) return;
   tableBody.innerHTML = '';
   if (!state.transcripts.length) {
     const emptyRow = document.createElement('tr');
@@ -130,69 +137,74 @@ function renderTranscripts() {
   });
 }
 
-tableBody.addEventListener('click', (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLElement)) return;
+if (tableBody) {
+  tableBody.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
 
-  const action = target.dataset.action;
-  if (!action) return;
+    const action = target.dataset.action;
+    if (!action) return;
 
-  const index = Number(target.dataset.index);
-  const entry = state.transcripts[index];
-  if (!entry) return;
+    const index = Number(target.dataset.index);
+    const entry = state.transcripts[index];
+    if (!entry) return;
 
-  if (action === 'edit') {
-    form.inputId.value = entry.id;
-    form.inputParticipant.value = entry.participant;
-    form.inputTranscript.value = entry.transcript;
-    form.inputTranscript.focus();
-  }
-
-  if (action === 'delete') {
-    const confirmation = confirm(`¿Eliminar la entrevista "${entry.id}"?`);
-    if (confirmation) {
-      state.transcripts.splice(index, 1);
-      renderTranscripts();
+    if (action === 'edit') {
+      form.inputId.value = entry.id;
+      form.inputParticipant.value = entry.participant;
+      form.inputTranscript.value = entry.transcript;
+      form.inputTranscript.focus();
     }
-  }
-});
 
-analyzeBtn.addEventListener('click', async () => {
-  if (!state.transcripts.length) {
-    alert('Agrega al menos una entrevista antes de ejecutar el análisis.');
-    return;
-  }
-
-  statusEl.textContent = 'Procesando…';
-  toggleLoading(true);
-
-  const instructions = document.getElementById('instructions').value.trim();
-  const requestPayload = buildPrompt(state.transcripts, instructions);
-  const endpoint = document.getElementById('apiEndpoint').value.trim();
-  const apiKey = document.getElementById('apiKey').value.trim();
-  const model = document.getElementById('model').value.trim();
-  const temperature = Number(document.getElementById('temperature').value);
-
-  try {
-    let analysis;
-    if (endpoint && apiKey) {
-      analysis = await analyzeWithLLM({ endpoint, apiKey, model, temperature, payload: requestPayload });
-    } else {
-      analysis = analyzeLocally(state.transcripts, instructions);
+    if (action === 'delete') {
+      const confirmation = confirm(`¿Eliminar la entrevista "${entry.id}"?`);
+      if (confirmation) {
+        state.transcripts.splice(index, 1);
+        renderTranscripts();
+      }
     }
-    state.analysis = analysis;
-    renderAnalysis(analysis);
-    statusEl.textContent = 'Análisis completado';
-  } catch (error) {
-    console.error(error);
-    statusEl.textContent = 'Ocurrió un error al generar el análisis';
-    alert('No fue posible completar el análisis. Revisa la consola para más detalles.');
-  } finally {
-    toggleLoading(false);
-  }
-});
+  });
+}
+
+if (analyzeBtn) {
+  analyzeBtn.addEventListener('click', async () => {
+    if (!state.transcripts.length) {
+      alert('Agrega al menos una entrevista antes de ejecutar el análisis.');
+      return;
+    }
+
+    if (statusEl) statusEl.textContent = 'Procesando…';
+    toggleLoading(true);
+
+    const instructions = document.getElementById('instructions').value.trim();
+    const requestPayload = buildPrompt(state.transcripts, instructions);
+    const endpoint = document.getElementById('apiEndpoint').value.trim();
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const model = document.getElementById('model').value.trim();
+    const temperature = Number(document.getElementById('temperature').value);
+
+    try {
+      let analysis;
+      if (endpoint && apiKey) {
+        analysis = await analyzeWithLLM({ endpoint, apiKey, model, temperature, payload: requestPayload });
+      } else {
+        analysis = analyzeLocally(state.transcripts, instructions);
+      }
+      state.analysis = analysis;
+      renderAnalysis(analysis);
+      if (statusEl) statusEl.textContent = 'Análisis completado';
+    } catch (error) {
+      console.error(error);
+      if (statusEl) statusEl.textContent = 'Ocurrió un error al generar el análisis';
+      alert('No fue posible completar el análisis. Revisa la consola para más detalles.');
+    } finally {
+      toggleLoading(false);
+    }
+  });
+}
 
 function toggleLoading(isLoading) {
+  if (!analyzeBtn) return;
   analyzeBtn.disabled = isLoading;
   analyzeBtn.textContent = isLoading ? 'Analizando…' : 'Ejecutar análisis';
 }
@@ -505,49 +517,73 @@ function mapFreeformToAnalysis(text) {
   };
 }
 
-exportBtn.addEventListener('click', () => {
+if (exportBtn) {
+  exportBtn.addEventListener('click', () => {
   if (!state.analysis) {
     alert('Genera un análisis antes de exportar.');
     return;
   }
 
-  const payload = {
-    metadata: {
-      generatedAt: new Date().toISOString(),
-      transcripts: state.transcripts.length
-    },
-    inputs: state.transcripts,
-    analysis: state.analysis
-  };
+    const payload = {
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        transcripts: state.transcripts.length
+      },
+      inputs: state.transcripts,
+      analysis: state.analysis
+    };
 
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `informe-cualitativo-${Date.now()}.json`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-});
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `informe-cualitativo-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
+}
 
-document.querySelectorAll('button.copy').forEach((button) => {
-  button.addEventListener('click', () => {
-    const targetId = button.dataset.target;
-    const container = document.getElementById(targetId);
-    const text = container.innerText.trim();
-    if (!text) return;
+if (isBrowser) {
+  document.querySelectorAll('button.copy').forEach((button) => {
+    button.addEventListener('click', () => {
+      const targetId = button.dataset.target;
+      const container = document.getElementById(targetId);
+      const text = container.innerText.trim();
+      if (!text) return;
 
-    navigator.clipboard.writeText(text).then(() => {
-      button.textContent = 'Copiado ✓';
-      setTimeout(() => (button.textContent = 'Copiar'), 1600);
+      navigator.clipboard.writeText(text).then(() => {
+        button.textContent = 'Copiado ✓';
+        setTimeout(() => (button.textContent = 'Copiar'), 1600);
+      });
     });
   });
-});
 
-renderTranscripts();
+  renderTranscripts();
 
-const initialAnalysis = analyzeLocally(state.transcripts, '');
-state.analysis = initialAnalysis;
-renderAnalysis(initialAnalysis);
-statusEl.textContent = 'Análisis preliminar generado con el motor heurístico integrado.';
+  const initialAnalysis = analyzeLocally(state.transcripts, '');
+  state.analysis = initialAnalysis;
+  renderAnalysis(initialAnalysis);
+  if (statusEl) {
+    statusEl.textContent = 'Análisis preliminar generado con el motor heurístico integrado.';
+  }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    buildPrompt,
+    analyzeLocally,
+    splitSentences,
+    computeWordFrequency,
+    extractThemes,
+    rankSentencesByKeywords,
+    estimateSentiment,
+    buildQuotes,
+    deriveOpportunities,
+    normalizeAnalysis,
+    mapFreeformToAnalysis,
+    goalCheckboxes,
+    state
+  };
+}
