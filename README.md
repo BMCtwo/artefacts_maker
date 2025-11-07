@@ -50,9 +50,25 @@ Antes de cada matriz se muestra un **ejemplo de prueba** con los mismos 6 elemen
 
 - Sistema operativo: Windows, macOS o Linux.
 
-## Instalación
+## Instalación y descarga
 
 1. **Clonar el repositorio:**
+   ```bash
+   git clone https://github.com/tu-usuario/analisis-cualitativo.git
+   cd analisis-cualitativo
+   ```
+2. **Instalar dependencias (solo una vez):**
+   ```bash
+   npm install
+   ```
+3. **Generar un paquete descargable:**
+   ```bash
+   npm run package
+   ```
+   El comando anterior crea la carpeta `dist/` con un archivo comprimido llamado `analisis-cualitativo-app.zip`. Puedes copiar este archivo a cualquier ordenador y descomprimirlo.
+4. **Ejecutar la aplicación sin conexión:**
+   - Descomprime `analisis-cualitativo-app.zip`.
+   - Abre `analisis_cualitativo/index.html` en tu navegador preferido.
+   - No se necesita servidor ni conexión a internet (salvo que decidas usar servicios externos de IA).
 
-- Abre el archivo index.html en cualquier navegador moderno.
-- También puedes alojar los archivos en un servidor web si deseas acceder a la aplicación de forma remota.
+Si prefieres usar la aplicación directamente desde el repositorio, basta con abrir `analisis_cualitativo/index.html` en cualquier navegador moderno. También puedes alojar los archivos en un servidor web si deseas acceder a la aplicación de forma remota.
