@@ -1,0 +1,9 @@
+{
+  "name": "analisis-cualitativo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "package": "node scripts/package.js"
+  }
+}
