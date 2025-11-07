@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analizador Cualitativo de Entrevistas con IA</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">AI</div>
+      <div>
+        <h1>Analizador cualitativo de entrevistas</h1>
+        <p>Explora narrativas, temas y emociones con ayuda de IA</p>
+      </div>
+    </div>
+    <button id="exportReport" class="primary" title="Descarga un informe con los resultados">Exportar informe</button>
+  </header>
+
+  <main>
+    <section class="panel" aria-labelledby="capture-title">
+      <div class="panel-header">
+        <h2 id="capture-title">1. Captura tus entrevistas</h2>
+        <p>Agrega transcripciones manualmente o importa archivos de texto/JSON.</p>
+      </div>
+
+      <form id="transcriptForm" class="grid">
+        <label>
+          Identificador
+          <input type="text" id="inputId" name="inputId" placeholder="Ejem. Entrevista 01" required>
+        </label>
+        <label>
+          Participante / Segmento
+          <input type="text" id="inputParticipant" name="inputParticipant" placeholder="María, UX, 34 años" required>
+        </label>
+        <label class="textarea-label">
+          Transcripción
+          <textarea id="inputTranscript" name="inputTranscript" rows="8" placeholder="Pega aquí la transcripción o notas relevantes" required></textarea>
+        </label>
+        <div class="actions">
+          <label class="file-upload" for="fileImport">
+            <input type="file" id="fileImport" accept=".txt,.json" hidden>
+            <span>Importar archivo…</span>
+          </label>
+          <button type="submit" class="primary">Añadir transcripción</button>
+        </div>
+      </form>
+
+      <div class="table-wrapper" role="region" aria-live="polite">
+        <table>
+          <caption>Entrevistas capturadas</caption>
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Participante</th>
+              <th scope="col">Extensión</th>
+              <th scope="col">Última actualización</th>
+              <th scope="col" class="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="transcriptTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="analysis-title">
+      <div class="panel-header">
+        <h2 id="analysis-title">2. Configura el análisis</h2>
+        <p>Personaliza el comportamiento de la IA y selecciona los entregables que necesitas.</p>
+      </div>
+      <div class="grid settings">
+        <fieldset>
+          <legend>Objetivos del análisis</legend>
+          <label class="checkbox">
+            <input type="checkbox" id="goalSummary" checked>
+            <span>Resumen ejecutivo</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="goalThemes" checked>
+            <span>Temas emergentes y códigos sugeridos</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="goalSentiment" checked>
+            <span>Mapa emocional / polaridad</span>
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="goalOpportunities">
+            <span>Oportunidades y recomendaciones</span>
+          </label>
+        </fieldset>
+
+        <label class="textarea-label">
+          Instrucciones adicionales (prompt)
+          <textarea id="instructions" rows="6" placeholder="Describe el enfoque: ejem. prioriza hallazgos sobre satisfacción, identifica citas textuales representativas, contrasta diferencias por segmento."></textarea>
+        </label>
+
+        <fieldset>
+          <legend>Configura tu proveedor de IA</legend>
+          <p class="hint">Introduce tu endpoint compatible con OpenAI si deseas un análisis automático. Si no se proporciona, se utilizará el motor heurístico integrado.</p>
+          <label>
+            Endpoint
+            <input type="url" id="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions">
+          </label>
+          <label>
+            API Key
+            <input type="password" id="apiKey" placeholder="sk-...">
+          </label>
+          <label>
+            Modelo
+            <input type="text" id="model" placeholder="gpt-4o-mini" value="gpt-4o-mini">
+          </label>
+          <label>
+            Temperatura
+            <input type="number" id="temperature" value="0.3" min="0" max="2" step="0.1">
+          </label>
+        </fieldset>
+      </div>
+      <div class="panel-footer">
+        <button id="analyzeBtn" class="primary large">Ejecutar análisis</button>
+        <div id="analysisStatus" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="results-title">
+      <div class="panel-header">
+        <h2 id="results-title">3. Resultados</h2>
+        <p>Explora hallazgos sintetizados, códigos sugeridos y citas relevantes.</p>
+      </div>
+
+      <div id="results" class="results-grid">
+        <article class="result-card" data-section="summary">
+          <header>
+            <h3>Resumen ejecutivo</h3>
+            <button class="copy" data-target="summary">Copiar</button>
+          </header>
+          <div class="content" id="summary" aria-live="polite"></div>
+        </article>
+
+        <article class="result-card" data-section="themes">
+          <header>
+            <h3>Temas y códigos</h3>
+            <button class="copy" data-target="themes">Copiar</button>
+          </header>
+          <div class="content" id="themes" aria-live="polite"></div>
+        </article>
+
+        <article class="result-card" data-section="sentiment">
+          <header>
+            <h3>Panorama emocional</h3>
+            <button class="copy" data-target="sentiment">Copiar</button>
+          </header>
+          <div class="content" id="sentiment" aria-live="polite"></div>
+        </article>
+
+        <article class="result-card" data-section="opportunities">
+          <header>
+            <h3>Oportunidades y recomendaciones</h3>
+            <button class="copy" data-target="opportunities">Copiar</button>
+          </header>
+          <div class="content" id="opportunities" aria-live="polite"></div>
+        </article>
+
+        <article class="result-card full" data-section="quotes">
+          <header>
+            <h3>Citas destacadas</h3>
+            <button class="copy" data-target="quotes">Copiar</button>
+          </header>
+          <div class="content" id="quotes" aria-live="polite"></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <template id="quoteTemplate">
+    <figure>
+      <blockquote></blockquote>
+      <figcaption></figcaption>
+    </figure>
+  </template>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>
