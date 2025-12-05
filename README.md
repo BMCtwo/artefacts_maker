@@ -1,58 +1,51 @@
-# Medidor de RAN (Rapidez Automática de Nombrado)
+# Generador de feedback automático para entregas estudiantiles
 
-Esta aplicación está diseñada para medir la Rapidez Automática de Nombrado (RAN), evaluando el tiempo que tarda un sujeto en nombrar diferentes matrices compuestas por colores, objetos, letras y números.
-
-## Descripción
-
-La prueba RAN consiste en presentar al sujeto matrices de estímulos que debe leer en voz alta. Cada matriz contiene 6 elementos:
-- **Colores:** negro, verde, azul, rojo, blanco y amarillo.
-- **Objetos:** coche, estrella, lápiz, silla, paraguas y llave.
-- **Letras:** D, S, A, P, O, L.
-- **Números:** 1, 2, 3, 7, 9, 6.
-
-Antes de cada matriz se muestra un **ejemplo de prueba** con los mismos 6 elementos. Este ejemplo tiene como objetivo verificar que el sujeto reconoce y puede nombrar correctamente cada uno de los elementos antes de que se realice la medición.
-
-## Flujo de la Aplicación
-
-1. **Ingreso de Datos del Sujeto:**  
-   Al iniciar la aplicación se solicita la siguiente información:
-   - Identificación del sujeto.
-   - Clase y letra.
-   - Edad.
-   - Sexo (indicar si es niño o niña).
-
-2. **Presentación de Estímulos:**  
-   Los estímulos se muestran en el siguiente orden:
-   - Ejemplo de colores.
-   - Matriz de colores.
-   - Ejemplo de objetos.
-   - Matriz de objetos.
-   - Ejemplo de letras.
-   - Matriz de letras.
-   - Ejemplo de números.
-   - Matriz de números.
-
-3. **Ejecución de la Prueba:**  
-   - Cada matriz se debe leer de forma secuencial: iniciando por la fila superior y avanzando de izquierda a derecha.
-   - Antes de la presentación de la matriz, el experimentador muestra un ejemplo para asegurarse de que el sujeto conoce los elementos.
-   - Al iniciar la lectura de la matriz, el experimentador presiona el botón **"Iniciar"** para comenzar a registrar el tiempo.
-   - Cuando el sujeto termina de nombrar todos los elementos de la matriz, el experimentador presiona **"Terminar"**, registrando así el tiempo total empleado en la tarea.
-   - El proceso se repite para cada uno de los tipos de estímulos (colores, objetos, letras y números).
-
-## Características
-
-- **Interfaz intuitiva:** Diseño claro y fácil de usar, orientado para ser manejado por el experimentador.
-- **Registro automático de tiempos:** Cada lectura es cronometrada con precisión para obtener resultados fiables.
-- **Validación previa de conocimientos:** Se muestra un ejemplo antes de cada matriz para asegurar que el sujeto conoce los elementos a nombrar.
-- **Presentación secuencial de estímulos:** Los estímulos se muestran en un orden preestablecido para mantener la coherencia en la prueba.
+Este proyecto procesa carpetas con entregas (TXT, PDF o DOCX), limpia el texto y genera retroalimentación estructurada usando un modelo local o conectable a APIs externas. Incluye una interfaz CLI y pruebas básicas.
 
 ## Requisitos
 
-- Sistema operativo: Windows, macOS o Linux.
+- Python 3.10+
+- Dependencias: `pdfplumber`, `python-docx`, `pytest` (para pruebas).
 
-## Instalación
+Instalación rápida:
 
-1. **Clonar el repositorio:**
+```bash
+pip install pdfplumber python-docx pytest
+```
 
-- Abre el archivo index.html en cualquier navegador moderno.
-- También puedes alojar los archivos en un servidor web si deseas acceder a la aplicación de forma remota.
+## Uso
+
+Ejecuta el flujo completo con:
+
+```bash
+python -m src.main --input /ruta/tareas --rubrica rubrica.md --output output/ --token-limit 512 --model local --criteria "Claridad y coherencia"
+```
+
+- `--input`: carpeta con las entregas de los alumnos.
+- `--rubrica`: archivo de rúbrica (texto/Markdown).
+- `--output`: carpeta destino donde se generan los reportes por alumno y `resumen.csv`.
+- `--token-limit`: límite para las respuestas del modelo (se pasa al generador elegido).
+- `--model`: nombre del modelo (por defecto `local`, se puede reemplazar por OpenAI/HF en `feedback.py`).
+- `--criteria`: texto opcional con criterios adicionales.
+
+## Flujo interno
+
+1. **Carga** (`src/data_loader.py`): recorre la carpeta con `pathlib`, lee PDF/TXT/DOCX y normaliza a texto.
+2. **Preprocesado** (`src/preprocess.py`): limpia metadatos simples y tokeniza.
+3. **Generación de feedback** (`src/feedback.py`): arma un prompt con rúbrica/criterios y produce un JSON de fortalezas, áreas de mejora y calificación. El modelo por defecto es local y seguro para pruebas.
+4. **Salida** (`src/main.py`): guarda un Markdown por alumno en `output/<alumno>/feedback.md` y un `resumen.csv` con calificaciones y rutas.
+
+## Seguridad y privacidad
+
+- El modelo local no envía datos a terceros y funciona como plantilla.
+- Si se conecta una API externa (OpenAI, HuggingFace, etc.) debe aplicarse anonimización previa de nombres y datos sensibles de los textos antes de enviarlos. Añade ese paso en `feedback.py` o antes de construir el prompt y evita registrar información personal en logs.
+
+## Pruebas
+
+Ejecuta las pruebas con:
+
+```bash
+pytest
+```
+
+Las pruebas usan muestras de texto para verificar que se generan los archivos de salida.
